@@ -19,7 +19,7 @@ except ImportError:
 
 class Target(object):
 
-    __slots__ = ("name", "fullname", "type", "directory", "config")
+    __slots__ = ("name", "fullname", "type", "directory", "config", "cmake_binary")
 
     def __init__(self, name, fullname, type, directory, config):
         self.name = name
@@ -28,16 +28,23 @@ class Target(object):
         self.directory = directory
         self.config = config
 
+        settings = sublime.load_settings("CMakeBuilder.sublime-settings")
+        self.cmake_binary = settings.get("cmake_binary", "cmake")
+
     def __hash__(self):
         return hash(self.name)
 
     def cmd(self):
-        result = ["cmake", "--build", "."]
+        result = [self.cmake_binary, "--build", "."]
         if self.type == "ALL":
             return result
         result.extend(["--target", self.name])
         if self.config:
             result.extend["--config", self.config]
+        return result
+
+    def build_cmd(self):
+        result = [self.cmake_binary, "--build", "."]
         return result
 
 
@@ -67,8 +74,8 @@ class Server(Default.exec.ProcessListener):
         self.on_codemodel_done_handler = on_codemodel_done_handler
 
         settings = sublime.load_settings("CMakeBuilder.sublime-settings")
-        cmake_binary = settings.get("cmake_binary", "cmake")
-        cmd = [cmake_binary, "-E", "server"]
+        self.cmake_binary = settings.get("cmake_binary", "cmake")
+        cmd = [self.cmake_binary, "-E", "server"]
         if experimental:
             cmd.append("--experimental")
         if debug:

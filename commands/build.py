@@ -48,6 +48,8 @@ class CmakeBuildCommand(CmakeCommand):
                 active_target = f.read()
         else:
             active_target = None
+
+
         if select_target or active_target is None:
             if not self.server.targets:
                 sublime.error_message(
@@ -74,8 +76,22 @@ class CmakeBuildCommand(CmakeCommand):
         else:
             sublime.error_message("Unknown type: " + type(index))
             return
+
+
         if target.type == "RUN":
+            self.window.run_command(
+                "cmake_exec",
+                {
+                    "window_id": self.window.id(),
+                    "cmd": target.build_cmd(),
+                    "file_regex": self.server.cmake.file_regex,
+                    "syntax": self.server.cmake.syntax,
+                    "working_dir": self.server.cmake.build_folder
+                }
+            )
+
             self._handle_run_target(target)
+
         else:
             self.window.run_command(
                 "cmake_exec",
@@ -105,11 +121,7 @@ class CmakeBuildCommand(CmakeCommand):
             return
         try:
             if sublime.platform() in ("linux", "osx"):
-                cmd = ["/bin/bash",
-                       "-l",
-                       "-c",
-                       "{} && cd {} && {}".format(" ".join(cmd),
-                                                  t.directory,
+                cmd = ["cd {} && {}".format(t.directory,
                                                   prefix + t.fullname)]
             elif sublime.platform() == "windows":
                 raise ImportError
@@ -132,8 +144,21 @@ class CmakeBuildCommand(CmakeCommand):
     def _handle_run_target_terminal_view_route(self, cmd):
         import TerminalView  # will throw if not present
         assert TerminalView
+        # self.window.run_command(
+        #     "terminal_view_exec", {
+        #         "cmd": cmd,
+        #         "working_dir": self.server.cmake.build_folder
+        #     })
+
         self.window.run_command(
-            "terminal_view_exec", {
-                "cmd": cmd,
-                "working_dir": self.server.cmake.build_folder
+            "terminal_view_send_string", {
+                "string": ' '.join(cmd) + '\n',
             })
+
+
+import sublime_plugin
+class TestListener(sublime_plugin.EventListener):
+
+    def on_post_window_command(self, window, command_name, args):
+        # this text command just ran
+        print('Just ran {} in {} with {}', command_name, window, args)
